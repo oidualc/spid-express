@@ -387,6 +387,116 @@ const getSpidOrganizationMetadata = (
     : {};
 };
 
+const getSpidContactPersonOther = (
+  serviceProviderConfig: IServiceProviderConfig
+) => {
+  const SPID_SAML_EXTS_NS = "https://spid.gov.it/saml-extensions";
+
+  /* tslint:disable:object-literal-sort-keys */
+  return serviceProviderConfig.contactPersonOther
+    ? {
+        $: { contactType: "other" },
+        Extensions: {
+          VATNumber: {
+            $: { xmlns: SPID_SAML_EXTS_NS },
+            _: serviceProviderConfig.contactPersonOther.vatNumber
+          },
+          FiscalCode: {
+            $: { xmlns: SPID_SAML_EXTS_NS },
+            _: serviceProviderConfig.contactPersonOther.fiscalCode
+          },
+          Private: {
+            $: { xmlns: SPID_SAML_EXTS_NS }
+          }
+        },
+        EmailAddress: {
+          _: serviceProviderConfig.contactPersonOther.emailAddress
+        },
+        TelephoneNumber: {
+          _: serviceProviderConfig.contactPersonOther.telephoneNumber
+        }
+      }
+    : {};
+  /* tslint:enable:object-literal-sort-keys */
+};
+
+const getSpidContactPersonBilling = (
+  serviceProviderConfig: IServiceProviderConfig
+) => {
+  const FATTURE_EXTS_NS =
+    "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2";
+
+  /* tslint:disable:object-literal-sort-keys */
+  return serviceProviderConfig.contactPersonBilling
+    ? {
+        $: { contactType: "billing" },
+        Extensions: {
+          CessionarioCommittente: {
+            $: { xmlns: FATTURE_EXTS_NS },
+            DatiAnagrafici: {
+              $: { xmlns: FATTURE_EXTS_NS },
+              IdFiscaleIVA: {
+                $: { xmlns: FATTURE_EXTS_NS },
+                IdPaese: {
+                  $: { xmlns: FATTURE_EXTS_NS },
+                  _: serviceProviderConfig.contactPersonBilling.IVAIdPaese
+                },
+                IdCodice: {
+                  $: { xmlns: FATTURE_EXTS_NS },
+                  _: serviceProviderConfig.contactPersonBilling.IVAIdCodice
+                }
+              },
+              Anagrafica: {
+                $: { xmlns: FATTURE_EXTS_NS },
+                Denominazione: {
+                  $: { xmlns: FATTURE_EXTS_NS },
+                  _: serviceProviderConfig.contactPersonBilling.IVADenominazione
+                }
+              }
+            },
+            Sede: {
+              $: { xmlns: FATTURE_EXTS_NS },
+              Indirizzo: {
+                $: { xmlns: FATTURE_EXTS_NS },
+                _: serviceProviderConfig.contactPersonBilling.sedeIndirizzo
+              },
+              NumeroCivico: {
+                $: { xmlns: FATTURE_EXTS_NS },
+                _: serviceProviderConfig.contactPersonBilling.sedeNumeroCivico
+              },
+              CAP: {
+                $: { xmlns: FATTURE_EXTS_NS },
+                _: serviceProviderConfig.contactPersonBilling.sedeCap
+              },
+              Comune: {
+                $: { xmlns: FATTURE_EXTS_NS },
+                _: serviceProviderConfig.contactPersonBilling.sedeComune
+              },
+              Provincia: {
+                $: { xmlns: FATTURE_EXTS_NS },
+                _: serviceProviderConfig.contactPersonBilling.sedeProvincia
+              },
+              Nazione: {
+                $: { xmlns: FATTURE_EXTS_NS },
+                _: serviceProviderConfig.contactPersonBilling.sedeNazione
+              }
+            }
+          }
+        },
+        Company: {
+          _: serviceProviderConfig.contactPersonBilling.company
+        },
+        EmailAddress: {
+          _: serviceProviderConfig.contactPersonBilling.emailAddress
+        },
+        TelephoneNumber: {
+          _: serviceProviderConfig.contactPersonBilling.telephoneNumber
+        }
+      }
+    : {};
+  /* tslint:enable:object-literal-sort-keys */
+};
+
 const getKeyInfoForMetadata = (publicCert: string, privateKey: string) => ({
   file: privateKey,
   getKey: () => Buffer.from(privateKey),
@@ -428,11 +538,23 @@ export const getMetadataTamperer = (
           // tslint:disable-next-line: object-literal-sort-keys
           RequestedAttribute: getSpidAttributesMetadata(serviceProviderConfig)
         };
-        // tslint:disable-next-line: no-object-mutation
-        o.EntityDescriptor = {
-          ...o.EntityDescriptor,
-          ...getSpidOrganizationMetadata(serviceProviderConfig)
-        };
+        if (process.env.SERVICE_PROVIDER_TYPE === "private") {
+          // tslint:disable-next-line: no-object-mutation
+          o.EntityDescriptor = {
+            ...o.EntityDescriptor,
+            ...getSpidOrganizationMetadata(serviceProviderConfig),
+            ContactPerson: [
+              { ...getSpidContactPersonOther(serviceProviderConfig) },
+              { ...getSpidContactPersonBilling(serviceProviderConfig) }
+            ]
+          };
+        } else {
+          // tslint:disable-next-line: no-object-mutation
+          o.EntityDescriptor = {
+            ...o.EntityDescriptor,
+            ...getSpidOrganizationMetadata(serviceProviderConfig)
+          };
+        }
         return o;
       }, toError)
     )
