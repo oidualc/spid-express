@@ -1,7 +1,7 @@
 import * as bodyParser from "body-parser";
 import * as express from "express";
-import * as https from 'https';
 import * as fs from "fs";
+import * as https from "https";
 import * as t from "io-ts";
 import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
 import {
@@ -52,23 +52,24 @@ const appConfig: IApplicationConfig = {
   sloPath: process.env.ENDPOINT_LOGOUT
 };
 
+/* tslint:disable:object-literal-sort-keys */
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
-    "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml", //default - contiene tutti gli identity providers di produzione
-    //"https://idp.spid.gov.it/metadata", // xml contenente l'identity provider di test governativo
-    //"https://www.spid-validator.it/metadata.xml", // spid validator url
+    "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml", // default - contiene tutti gli identity providers di produzione
+  // "https://idp.spid.gov.it/metadata", // xml contenente l'identity provider di test governativo
+  // "https://www.spid-validator.it/metadata.xml", // spid validator url
   organization: {
     URL: process.env.ORG_URL,
     displayName: process.env.ORG_DISPLAY_NAME,
     name: process.env.ORG_NAME
   },
-  contactPersonOther:{
+  contactPersonOther: {
     vatNumber: process.env.CONTACT_PERSON_OTHER_VAT_NUMBER,
     fiscalCode: process.env.CONTACT_PERSON_OTHER_FISCAL_CODE,
     emailAddress: process.env.CONTACT_PERSON_OTHER_EMAIL_ADDRESS,
-    telephoneNumber: process.env.CONTACT_PERSON_OTHER_TELEPHONE_NUMBER,
+    telephoneNumber: process.env.CONTACT_PERSON_OTHER_TELEPHONE_NUMBER
   },
-  contactPersonBilling:{
+  contactPersonBilling: {
     IVAIdPaese: process.env.CONTACT_PERSON_BILLING_IVA_IDPAESE,
     IVAIdCodice: process.env.CONTACT_PERSON_BILLING_IVA_IDCODICE,
     IVADenominazione: process.env.CONTACT_PERSON_BILLING_IVA_DENOMINAZIONE,
@@ -80,7 +81,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
     sedeNazione: process.env.CONTACT_PERSON_BILLING_SEDE_NAZIONE,
     company: process.env.CONTACT_PERSON_BILLING_COMPANY,
     emailAddress: process.env.CONTACT_PERSON_BILLING_EMAIL_ADDRESS,
-    telephoneNumber: process.env.CONTACT_PERSON_BILLING_TELEPHONE_NUMBER,
+    telephoneNumber: process.env.CONTACT_PERSON_BILLING_TELEPHONE_NUMBER
   },
   publicCert: fs.readFileSync(process.env.METADATA_PUBLIC_CERT, "utf-8"),
   requiredAttributes: {
@@ -98,6 +99,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
     [process.env.SPID_TESTENV_URL]: true
   }
 };
+/* tslint:enable:object-literal-sort-keys */
 
 const redisClient = redis.createClient({
   host: "redis"
@@ -130,12 +132,13 @@ const logout: LogoutT = async () =>
 
 const app = express();
 
-if (process.env.USE_HTTPS==="true"){
-  var serverOptions = {
-    key: fs.readFileSync(process.env.HTTPS_KEY),
-    cert: fs.readFileSync(process.env.HTTPS_CRT)
-  };
-}
+const serverOptions =
+  process.env.USE_HTTPS === "true"
+    ? {
+        cert: fs.readFileSync(process.env.HTTPS_CRT),
+        key: fs.readFileSync(process.env.HTTPS_KEY)
+      }
+    : {};
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -144,18 +147,21 @@ app.use(passport.initialize());
 // Create a Proxy to forward local calls to spid validator container
 const proxyApp = express();
 proxyApp.get("*", (req, res) => {
-  console.log("###############  REDIRECT from "+req.path+" to spid-saml-check");
+  // tslint:disable-next-line:no-console
+  console.log(
+    "###############  REDIRECT from " + req.path + " to spid-saml-check"
+  );
   res.redirect("http://spid-saml-check:8080" + req.path);
 });
 proxyApp.listen(8080);
 
 const doneCb = (ip: string | null, request: string, response: string) => {
   // tslint:disable-next-line: no-console
-  console.log("*************** Callback done:", ip);
+  console.log(`*************** Callback done: ${ip}`);
   // tslint:disable-next-line: no-console
-  console.log("request: "+request);
+  console.log(`request: ${request}`);
   // tslint:disable-next-line: no-console
-  console.log("response: "+response);
+  console.log(`response: ${response}`);
 };
 
 withSpid({
@@ -170,19 +176,24 @@ withSpid({
 })
   .map(({ app: withSpidApp, idpMetadataRefresher }) => {
     withSpidApp.get("/success", (_, res) => {
-      console.log("example.ts-/success reply with JSON success");
+      // tslint:disable-next-line:no-console
+      console.log("example.ts: /success reply with JSON success");
       res.json({
         success: "success"
-      })
+      });
     });
     withSpidApp.get("/error", (_, res) => {
-      console.log("example.ts-/error reply with JSON error");
+      // tslint:disable-next-line:no-console
+      console.log("example.ts: /error reply with JSON error");
       res.status(500).send({
-          error: "error"
-        });
+        error: "error"
+      });
     });
     withSpidApp.get("/refresh", async (_, res) => {
-      console.log("example.ts-/refresh reply with JSON metadataUpdate: completed");
+      // tslint:disable-next-line:no-console
+      console.log(
+        "example.ts: /refresh reply with JSON metadataUpdate: completed"
+      );
       await idpMetadataRefresher().run();
       res.json({
         metadataUpdate: "completed"
@@ -199,13 +210,15 @@ withSpid({
           error: error.message
         })
     );
-    if ("true" === process.env.USE_HTTPS){
-      https.createServer(serverOptions, withSpidApp).listen(3000, function(){
-        console.log('Server ready on 3000 port in HTTPS')
+    if (process.env.USE_HTTPS === "true") {
+      https.createServer(serverOptions, withSpidApp).listen(3000, () => {
+        // tslint:disable-next-line:no-console
+        console.log("Server ready on 3000 port in HTTPS");
       });
-    }else{
-      withSpidApp.listen(3000, function(){
-        console.log('Server ready on 3000 port in HTTPS')
+    } else {
+      withSpidApp.listen(3000, () => {
+        // tslint:disable-next-line:no-console
+        console.log("Server ready on 3000 port in HTTPS");
       });
     }
   })
