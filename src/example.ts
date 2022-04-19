@@ -218,7 +218,7 @@ withSpid({
     } else {
       withSpidApp.listen(3000, () => {
         // tslint:disable-next-line:no-console
-        console.log("Server ready on 3000 port in HTTPS");
+        console.log("Server ready on 3000 port in HTTP");
       });
     }
   })
